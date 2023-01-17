@@ -1,13 +1,34 @@
-# TODO: add login feature
-from aes import decrypt, encrypt
+#!/usr/bin/env python3
+import hashlib
+import aes.main as aes
 from password_generator import generate_password
 import sys
 import pyperclip
 import json
 from getpass import getpass
 
+
+def login():
+    try:
+        data = json.load(open('data.json', 'r'))
+    except FileNotFoundError:
+        data = ""
+        password = getpass("Create password: ")
+        data = hashlib.sha256(password.encode()).hexdigest()
+        print("Password created")
+        json.dump(data, open('data.json', 'w'))
+        print("Successfully logged in")
+        return password
+    password = getpass('Enter your password: ')
+    hash = hashlib.sha256(password.encode()).hexdigest()
+    if hash != data:
+        print('Wrong password!')
+        sys.exit(1)
+    print("Successfully logged in")
+    return password
+
+
 def main():
-    user_password = getpass("Enter your password: ")
     try:
         passwords = json.load(open('passwords.json'))
     except:
@@ -19,12 +40,15 @@ def main():
     new_password = ""
     debug = False
     new = False
+    existing = False
     no_symbols = False
     for i, arg in enumerate(args):
         if arg == "-l":
             length = int(args[i+1])
         elif arg == "-n":
             new = True
+        elif arg == "-e":
+            existing = True
         elif arg == "-ns" or arg == "--no-symbols":
             no_symbols = True
         elif arg == "-p" or arg == "-d":
@@ -37,34 +61,45 @@ def main():
                 new_password = arg
             else:
                 tag = arg
-    if new:
-        print("Generating new password")
-        password = generate_password(length, no_symbols)
-        print("password generated")
-        if debug:
-            print(password)
-        encrypted_password = encrypt(password, user_password)
-        passwords[tag] = encrypted_password
-        pyperclip.copy(password)
-        json.dump(passwords, open('passwords.json', 'w'))
-    else:
-        if new_password:
-            encrypted_password = encrypt(new_password, user_password)
-            passwords[tag] = encrypted_password
-            pyperclip.copy(new_password)
-            json.dump(passwords, open('passwords.json', 'w'))
-        else:
-            encrypted_password = passwords[tag]
-            password = decrypt(encrypted_password, user_password)
-            pyperclip.copy(password)
+    if tag:
+        user_password = login()
+        if new:
+            print("Generating new password")
+            password = generate_password(length, no_symbols)
+            print("Password generated")
             if debug:
                 print(password)
-    if not args:
+            encrypted_password = aes.encrypt(password, user_password)
+            passwords[tag] = encrypted_password
+            pyperclip.copy(password)
+            print("Password copied to clipboard")
+            json.dump(passwords, open('passwords.json', 'w'), indent=4)
+        if existing:
+            new_password = getpass("Enter new password: ")
+            encrypted_password = aes.encrypt(new_password, user_password)
+            passwords[tag] = encrypted_password
+            json.dump(passwords, open('passwords.json', 'w'), indent=4)
+        if not new and not existing:
+            if new_password:
+                print("Encrypting password...")
+                encrypted_password = aes.encrypt(new_password, user_password)
+                print("Password encrypted")
+                passwords[tag] = encrypted_password
+                pyperclip.copy(new_password)
+                print("Password copied to clipboard")
+                json.dump(passwords, open('passwords.json', 'w'), indent=4)
+            else:
+                encrypted_password = passwords[tag]
+                print("Decrypting password...")
+                password = aes.decrypt(encrypted_password, user_password)
+                pyperclip.copy(password)
+                print("Password copied to clipboard")
+                if debug:
+                    print(password)
+    else:
         for tag in passwords:
             print(tag)
 
 
 if __name__ == '__main__':
     main()
-
-
