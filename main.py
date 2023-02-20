@@ -7,68 +7,32 @@ import pyperclip
 import json
 from getpass import getpass
 
-class App:
-    def __init__(self, password):
-        self.password = password
-        length = 16
-        tag = ""
-        new_password = ""
-        debug = False
-        new = False
-        existing = False
+class PasswordManager:
+    def __init__(self):
+        self.password = ""
+        self.length = 16
+        self.tag = ""
+        self.new_password = False
+        self.debug = False
+        self.new = False
+        self.existing = False
+        self.no_symbols = False
+        self.start()
 
-    def login(self):
-        try:
-            data = json.load(open('data.json', 'r'))
-        except FileNotFoundError:
-            data = ""
-            password = getpass("Create password: ")
-            data = hashlib.sha256(password.encode()).hexdigest()
-            print("Password created")
-            json.dump(data, open('data.json', 'w'))
-            print("Successfully logged in")
-            return password
-        password = getpass('Enter your password: ')
-        hash = hashlib.sha256(password.encode()).hexdigest()
-        if hash != data:
-            print('Wrong password!')
-            sys.exit(1)
-        print("Successfully logged in")
-        return password
-
-
-    def new_password(self):
-        print("Generating new password")
-        password = generate_password(self.length, self.no_symbols)
-        print("Password generated")
-        if self.debug:
-            print(password)
-        encrypted_password = aes.encrypt(self.password, self.user_password)
-        self.passwords[tag] = encrypted_password
-        pyperclip.copy(password)
-        print("Password copied to clipboard")
-        json.dump(passwords, open('passwords.json', 'w'), indent=4)
-
-
-    def main(self):
-        try:
-            self.passwords = json.load(open('passwords.json'))
-        except:
-            self.passwords = {}
-            print("No passwords found. Creating new file.")
-        args = sys.argv[1:]
-        no_symbols = False
-        for i, arg in enumerate(args):
+    def start(self):
+        passwords = self.read_passwords_json()
+        exec_args = sys.argv[1:]
+        for i, arg in enumerate(exec_args):
             if arg == "-l":
-                length = int(args[i+1])
+                self.length = int(exec_args[i+1])
             elif arg == "-n":
-                new = True
+                self.new = True
             elif arg == "-e":
-                existing = True
+                self.existing = True
             elif arg == "-ns" or arg == "--no-symbols":
-                no_symbols = True
+                self.no_symbols = True
             elif arg == "-p" or arg == "-d":
-                debug = True
+                self.debug = True
             elif arg[0] != "-":
                 if tag:
                     if new_password:
@@ -106,7 +70,48 @@ class App:
             for tag in passwords:
                 print(tag)
 
+    def read_passwords_json(self):
+        try:
+            passwords = json.load(open('passwords.json'))
+        except:
+            passwords = {}
+            print("No existing passwords found. Creating new file.")
+        return passwords
+
+    def login(self):
+        try:
+            data = json.load(open('data.json', 'r'))
+        except FileNotFoundError:
+            data = ""
+            password = getpass("Create password: ")
+            data = hashlib.sha256(password.encode()).hexdigest()
+            print("Password created")
+            json.dump(data, open('data.json', 'w'))
+            print("Successfully logged in")
+            return password
+        password = getpass('Enter your password: ')
+        hash = hashlib.sha256(password.encode()).hexdigest()
+        if hash != data:
+            print('Wrong password!')
+            sys.exit(1)
+        print("Successfully logged in")
+        return password
+
+
+    def new_password(self):
+        print("Generating new password")
+        password = generate_password(self.length, self.no_symbols)
+        print("Password generated")
+        if self.debug:
+            print(password)
+        encrypted_password = aes.encrypt(self.password, self.user_password)
+        self.passwords[tag] = encrypted_password
+        pyperclip.copy(password)
+        print("Password copied to clipboard")
+        json.dump(passwords, open('passwords.json', 'w'), indent=4)
+
+
+
 
 if __name__ == '__main__':
-    pm = PasswordManager()
-    pm.main()
+    app = PasswordManager()
